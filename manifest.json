@@ -1,0 +1,25 @@
+{
+  "name": "FridgeAI — AI Kitchen Companion",
+  "short_name": "FridgeAI",
+  "description": "Turn fridge ingredients into beautiful AI-generated recipes with nutrition analysis.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#FFFCF7",
+  "theme_color": "#FF5C38",
+  "categories": ["food", "health", "lifestyle"],
+  "lang": "en-US",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Generate Recipes",
+      "short_name": "Cook Now",
+      "url": "/?action=generate",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

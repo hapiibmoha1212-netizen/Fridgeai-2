@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no"/>
+  <title>FridgeAI — AI Kitchen Companion</title>
+
+  <!-- PWA -->
+  <meta name="theme-color" content="#FF5C38"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="FridgeAI"/>
+  <meta name="description" content="Turn your fridge ingredients into beautiful AI-generated recipes with nutrition analysis."/>
+
+  <!-- OG -->
+  <meta property="og:title" content="FridgeAI — AI Kitchen Companion"/>
+  <meta property="og:description" content="Turn fridge ingredients into AI recipes with full nutrition analysis."/>
+  <meta property="og:type" content="website"/>
+
+  <!-- Manifest & Icons -->
+  <link rel="manifest" href="/manifest.json"/>
+  <link rel="apple-touch-icon" href="/icons/icon-192.png"/>
+  <link rel="icon" type="image/svg+xml" href="/icons/icon.svg"/>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html { height: 100%; scroll-behavior: smooth; overscroll-behavior: none; }
+    body {
+      margin: 0; padding: 0;
+      min-height: 100vh;
+      background: #FFFCF7;
+      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overscroll-behavior-y: none;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    #root { min-height: 100vh; }
+    ::-webkit-scrollbar { display: none; }
+    * { scrollbar-width: none; }
+    input, select, textarea { font-size: 16px !important; }
+
+    /* Splash */
+    #splash {
+      position: fixed; inset: 0; z-index: 9999;
+      background: linear-gradient(135deg, #FF6A3D 0%, #FFC13D 100%);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+    #splash.gone { opacity: 0; transform: scale(1.04); pointer-events: none; }
+    .splash-logo {
+      width: 88px; height: 88px; border-radius: 20px;
+      background: rgba(255,255,255,0.18); backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center;
+      animation: splashPulse 1.8s ease-in-out infinite;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+    }
+    @keyframes splashPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
+    .splash-title { font-family:'Syne',sans-serif; font-size:30px; font-weight:800; color:#fff; letter-spacing:-.04em; }
+    .splash-sub { font-size:12px; font-weight:600; color:rgba(255,255,255,.7); letter-spacing:.12em; text-transform:uppercase; }
+    .splash-dots { display:flex; gap:8px; margin-top:4px; }
+    .splash-dot { width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,.7); animation:dotBounce .9s ease-in-out infinite; }
+    .splash-dot:nth-child(2){animation-delay:.15s} .splash-dot:nth-child(3){animation-delay:.3s}
+    @keyframes dotBounce { 0%,100%{transform:translateY(0);opacity:.5} 50%{transform:translateY(-10px);opacity:1} }
+
+    /* Install banner */
+    #install-banner {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 500;
+      background: #fff; border-radius: 24px 24px 0 0;
+      padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
+      box-shadow: 0 -8px 40px rgba(18,13,6,.16);
+      border-top: 1px solid #F0E2C8;
+      transform: translateY(100%);
+      transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    #install-banner.show { transform: translateY(0); }
+    .install-row { display:flex; align-items:center; gap:14px; margin-bottom:14px; }
+    .install-icon { width:52px; height:52px; border-radius:13px; overflow:hidden; flex-shrink:0; box-shadow:0 3px 12px rgba(18,13,6,.14); }
+    .install-icon img { width:100%; height:100%; object-fit:cover; }
+    .install-text h3 { font-family:'Syne',sans-serif; font-size:17px; font-weight:800; color:#120D06; margin:0 0 3px; }
+    .install-text p { font-size:12px; color:#8A7860; margin:0; line-height:1.4; }
+    .install-btns { display:flex; gap:10px; }
+    .btn-install { flex:1; background:linear-gradient(135deg,#FF5C38,#FFAA00); color:#fff; border:none; border-radius:14px; padding:13px; font-family:'Plus Jakarta Sans',sans-serif; font-size:14px; font-weight:800; cursor:pointer; box-shadow:0 4px 20px rgba(255,92,56,.4); }
+    .btn-dismiss { background:#F5EFE4; color:#8A7860; border:none; border-radius:14px; padding:13px 18px; font-family:'Plus Jakarta Sans',sans-serif; font-size:14px; font-weight:700; cursor:pointer; }
+
+    /* CSS-only animations (no framer-motion) */
+    @keyframes fadeInUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+    @keyframes slideInRight { from{opacity:0;transform:translateX(24px)} to{opacity:1;transform:translateX(0)} }
+    @keyframes scaleIn { from{opacity:0;transform:scale(0.88)} to{opacity:1;transform:scale(1)} }
+    @keyframes shimmer { from{transform:translateX(-100%)} to{transform:translateX(250%)} }
+    @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-14px)} }
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+    @keyframes spin { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+    @keyframes chefWiggle { 0%,100%{transform:rotate(0) scale(1)} 25%{transform:rotate(10deg) scale(1.1)} 75%{transform:rotate(-8deg) scale(1.08)} }
+    @keyframes ringFill { from{stroke-dashoffset:var(--circ)} to{stroke-dashoffset:var(--end)} }
+    @keyframes barGrow { from{width:0} to{width:var(--w)} }
+    @keyframes chipPop { from{opacity:0;transform:scale(0)} to{opacity:1;transform:scale(1)} }
+    @keyframes cardSlideUp { from{opacity:0;transform:translateY(48px) scale(0.95)} to{opacity:1;transform:translateY(0) scale(1)} }
+  </style>
+</head>
+<body>
+
+<!-- Splash -->
+<div id="splash">
+  <div class="splash-logo">
+    <svg width="56" height="56" viewBox="0 0 200 200" fill="none">
+      <path d="M100 162C91 162 87 156 87 148L87 112C87 109 85 107 83 104C78 96 75 87 75 77C75 55 86.2 38 100 38C113.8 38 125 55 125 77C125 87 122 96 117 104C115 107 113 109 113 112L113 148C113 156 109 162 100 162Z" fill="white" opacity="0.96"/>
+      <path d="M100 90C100 90 88 80 88 71C88 63.3 93.4 57 100 57C106.6 57 112 63.3 112 71C112 80 100 90 100 90Z" fill="white" opacity="0.75"/>
+      <circle cx="100" cy="63" r="5" fill="white" opacity="0.6"/>
+    </svg>
+  </div>
+  <div class="splash-title">FridgeAI</div>
+  <div class="splash-sub">Your AI Kitchen Companion</div>
+  <div class="splash-dots">
+    <div class="splash-dot"></div>
+    <div class="splash-dot"></div>
+    <div class="splash-dot"></div>
+  </div>
+</div>
+
+<!-- Install Banner -->
+<div id="install-banner">
+  <div class="install-row">
+    <div class="install-icon">
+      <img src="/icons/icon-192.png" alt="FridgeAI" onerror="this.parentElement.innerHTML='🍳'"/>
+    </div>
+    <div class="install-text">
+      <h3>Add FridgeAI to Home Screen</h3>
+      <p>Install for offline access and a native app feel.</p>
+    </div>
+  </div>
+  <div class="install-btns">
+    <button class="btn-install" id="btn-install">🍳 Install App</button>
+    <button class="btn-dismiss" id="btn-dismiss">Not now</button>
+  </div>
+</div>
+
+<div id="root"></div>
+
+<!-- CDN: React + Babel (no build step) -->
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef, useCallback, useMemo, memo } = React;
+
+// ─── DESIGN TOKENS ──────────────────────────────────────────────────────────
+const T = {
+  cream: "#FFFCF7", warmWhite: "#FEF9F0", sand: "#F0E2C8", sandLight: "#FAF3E4",
+  coral: "#FF5C38", amber: "#FFAA00", sage: "#4CB87A", sky: "#4A9EFF", plum: "#8B7CF6",
+  ink: "#120D06", inkLight: "#2D2014", muted: "#8A7860", mutedLight: "#B8A88A",
+  cardBg: "#FFFFFF", border: "#EDE0C8",
+  shadow: "rgba(18,13,6,0.07)", shadowMd: "rgba(18,13,6,0.13)",
+};
+
+// ─── DATA ────────────────────────────────────────────────────────────────────
+const MOODS = [
+  { id:"lazy",     emoji:"😴", label:"Lazy",     color:"#8B7CF6", bg:"#F0EEFF", desc:"couch cuisine" },
+  { id:"comfort",  emoji:"🍜", label:"Comfort",  color:"#FF5C38", bg:"#FFF0ED", desc:"hug in a bowl" },
+  { id:"fast",     emoji:"⚡", label:"Fast",     color:"#FFAA00", bg:"#FFF8E0", desc:"5 min or bust" },
+  { id:"healthy",  emoji:"🥗", label:"Healthy",  color:"#4CB87A", bg:"#EDFAF3", desc:"actually good 4u" },
+  { id:"protein",  emoji:"💪", label:"Gains",    color:"#FF5C38", bg:"#FFF0ED", desc:"gym approved" },
+  { id:"sweet",    emoji:"🍫", label:"Sweet",    color:"#8B7CF6", bg:"#F0EEFF", desc:"treat yourself" },
+  { id:"midnight", emoji:"🌙", label:"Midnight", color:"#4A9EFF", bg:"#EEF6FF", desc:"3am cravings" },
+  { id:"chaotic",  emoji:"🌶️", label:"Chaos",   color:"#FF3860", bg:"#FFF0F3", desc:"no rules apply" },
+];
+
+const QUICK_INGREDIENTS = [
+  {name:"eggs",emoji:"🥚"},{name:"butter",emoji:"🧈"},{name:"cheese",emoji:"🧀"},
+  {name:"bread",emoji:"🍞"},{name:"pasta",emoji:"🍝"},{name:"rice",emoji:"🍚"},
+  {name:"onion",emoji:"🧅"},{name:"garlic",emoji:"🧄"},{name:"tomato",emoji:"🍅"},
+  {name:"potato",emoji:"🥔"},{name:"chicken",emoji:"🍗"},{name:"milk",emoji:"🥛"},
+  {name:"olive oil",emoji:"🫙"},{name:"bacon",emoji:"🥓"},{name:"lemon",emoji:"🍋"},
+  {name:"beans",emoji:"🫘"},{name:"spinach",emoji:"🥬"},{name:"avocado",emoji:"🥑"},
+];
+
+const FILTERS = [
+  {id:"quick",label:"⚡ Under 15 min"},{id:"onepan",label:"🍳 One pan"},
+  {id:"healthy",label:"🥦 Healthy"},{id:"highprotein",label:"💪 High protein"},
+  {id:"vegan",label:"🌱 Vegan"},{id:"budget",label:"💸 Budget"},{id:"snack",label:"🍿 Snack"},
+];
+
+const ALL_BADGES = [
+  {id:"highprotein",icon:"💪",label:"High Protein",color:"#FF5C38"},
+  {id:"energyboost",icon:"⚡",label:"Energy Boost",color:"#FFAA00"},
+  {id:"vitaminrich",icon:"🍊",label:"Vitamin Rich",color:"#FF8800"},
+  {id:"lowfat",icon:"🥗",label:"Low Fat",color:"#4CB87A"},
+  {id:"comfort",icon:"🍜",label:"Comfort Meal",color:"#FF5C38"},
+  {id:"studyfuel",icon:"📚",label:"Study Fuel",color:"#8B7CF6"},
+  {id:"postworkout",icon:"🔥",label:"Post Workout",color:"#FF3860"},
+  {id:"antioxidant",icon:"🫐",label:"Antioxidant",color:"#6B4EFF"},
+  {id:"heartHealthy",icon:"❤️",label:"Heart Healthy",color:"#FF5C8A"},
+  {id:"gutFriendly",icon:"🌿",label:"Gut Friendly",color:"#4CB87A"},
+];
+
+const LOADING_MSGS = [
+  "Rummaging through your virtual fridge...",
+  "Negotiating with your ingredients...",
+  "Consulting the flavor oracle...",
+  "Manifesting a meal from chaos...",
+  "Running culinary algorithms...",
+  "Assembling something suspiciously good...",
+];
+
+// ─── UTILS ───────────────────────────────────────────────────────────────────
+const save = (k,v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch{} };
+const load = (k,d) => { try { const r=localStorage.getItem(k); return r?JSON.parse(r):d; } catch{return d;} };
+
+// ─── API ─────────────────────────────────────────────────────────────────────
+async function generateRecipes(ingredients, mood, filters) {
+  const moodObj = MOODS.find(m=>m.id===mood) || MOODS[0];
+  const filterStr = filters.length ? `Filters: ${filters.join(", ")}.` : "";
+  const prompt = `You are FridgeAI, a witty AI chef and nutrition expert. Generate exactly 3 creative recipes using primarily these ingredients: ${ingredients.join(", ")}.
+
+Mood: ${moodObj.label} (${moodObj.desc}). ${filterStr}
+
+Return ONLY valid JSON, no markdown, no backticks, no explanation. Format:
+{
+  "chefQuip": "one clever charming line about this cooking session",
+  "recipes": [
+    {
+      "title": "Recipe Name",
+      "emoji": "🍳",
+      "chefComment": "one witty line about this dish",
+      "time": "12 min",
+      "difficulty": "Easy",
+      "serves": 2,
+      "mood": "${mood}",
+      "ingredients": ["egg", "butter", "cheese"],
+      "steps": ["Step 1 detail", "Step 2 detail", "Step 3 detail", "Step 4 detail"],
+      "nutrition": {
+        "calories": 420, "protein": 22, "carbs": 38, "fat": 18,
+        "fiber": 4, "sugar": 6, "iron": 12, "calcium": 15,
+        "potassium": 18, "magnesium": 10, "sodium": 520,
+        "vitaminA": 14, "vitaminC": 22, "vitaminD": 8
+      },
+      "healthScore": 78,
+      "badges": ["highprotein", "energyboost"],
+      "wellnessInsight": "2-3 sentence insight about why this meal is good for you and when to eat it",
+      "imageKeywords": "pasta carbonara creamy italian"
+    }
+  ]
+}
+Badges from: highprotein, energyboost, vitaminrich, lowfat, comfort, studyfuel, postworkout, antioxidant, heartHealthy, gutFriendly.
+Health score 0-100. Make recipes genuinely creative and delicious.`;
+
+  const res = await fetch("/api/generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt }),
+  });
+  if (!res.ok) throw new Error(`API ${res.status}`);
+  const data = await res.json();
+  const text = data.content[0].text;
+  const clean = text.replace(/```json|```/g,"").trim();
+  return JSON.parse(clean);
+}
+
+// ─── HEALTH SCORE RING ───────────────────────────────────────────────────────
+function HealthScoreRing({ score }) {
+  const r = 44, circ = 2 * Math.PI * r;
+  const color = score>=75 ? T.sage : score>=50 ? T.amber : T.coral;
+  const label = score>=80 ? "Excellent" : score>=65 ? "Great" : score>=50 ? "Good" : "Fair";
+  const offset = circ - (score/100)*circ;
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
+      <div style={{position:"relative",width:108,height:108}}>
+        <svg width="108" height="108" style={{transform:"rotate(-90deg)"}}>
+          <circle cx="54" cy="54" r={r} fill="none" stroke={T.sand} strokeWidth="8"/>
+          <circle
+            cx="54" cy="54" r={r} fill="none"
+            stroke={color} strokeWidth="8" strokeLinecap="round"
+            strokeDasharray={circ}
+            strokeDashoffset={circ}
+            style={{
+              animation: `ringFill 1.2s cubic-bezier(.34,1.26,.64,1) 0.3s forwards`,
+              "--circ": circ,
+              "--end": offset,
+            }}
+          />
+        </svg>
+        <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+          <span style={{fontFamily:"'Syne',sans-serif",fontSize:26,fontWeight:800,color,lineHeight:1}}>{score}</span>
+          <span style={{fontSize:10,color:T.muted,fontWeight:700,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>/100</span>
+        </div>
+      </div>
+      <span style={{fontSize:12,fontWeight:700,color,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>{label} Score</span>
+    </div>
+  );
+}
+
+// ─── NUTRITION BAR ───────────────────────────────────────────────────────────
+function NutritionBar({ label, value, max, color, unit="g", delay=0 }) {
+  const pct = Math.min((value/max)*100, 100);
+  return (
+    <div style={{marginBottom:11}}>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+        <span style={{fontSize:12,fontWeight:700,color:T.inkLight,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>{label}</span>
+        <span style={{fontSize:12,fontWeight:600,color:T.muted,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>{value}{unit}</span>
+      </div>
+      <div style={{height:7,background:T.sand,borderRadius:99,overflow:"hidden"}}>
+        <div style={{
+          height:"100%",background:color,borderRadius:99,
+          width:`${pct}%`,
+          animation:`barGrow 0.9s cubic-bezier(.34,1.26,.64,1) ${delay}s both`,
+          "--w":`${pct}%`,
+        }}/>
+      </div>
+    </div>
+  );
+}
+
+// ─── MACRO CARD ──────────────────────────────────────────────────────────────
+function MacroCard({ label, value, unit, color, icon, delay=0 }) {
+  return (
+    <div style={{
+      flex:1, minWidth:68,
+      background:T.cardBg, border:`1.5px solid ${T.border}`,
+      borderRadius:16, padding:"12px 8px",
+      display:"flex",flexDirection:"column",alignItems:"center",gap:3,
+      boxShadow:`0 2px 10px ${T.shadow}`,
+      animation:`scaleIn 0.4s cubic-bezier(.34,1.56,.64,1) ${delay}s both`,
+    }}>
+      <span style={{fontSize:18}}>{icon}</span>
+      <span style={{fontFamily:"'Syne',sans-serif",fontSize:19,fontWeight:800,color,lineHeight:1}}>{value}</span>
+      <span style={{fontSize:10,color:T.muted,fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:600}}>{unit}</span>
+      <span style={{fontSize:9,color:T.mutedLight,fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:700,letterSpacing:"0.05em",textTransform:"uppercase"}}>{label}</span>
+    </div>
+  );
+}
+
+// ─── BADGE CHIP ──────────────────────────────────────────────────────────────
+function BadgeChip({ badge, delay=0 }) {
+  const b = ALL_BADGES.find(x=>x.id===badge);
+  if (!b) return null;
+  return (
+    <div style={{
+      display:"inline-flex",alignItems:"center",gap:5,
+      background:`${b.color}18`, border:`1.5px solid ${b.color}40`,
+      borderRadius:100, padding:"5px 11px",
+      fontSize:11,fontWeight:700,color:b.color,
+      fontFamily:"'Plus Jakarta Sans',sans-serif",whiteSpace:"nowrap",
+      animation:`chipPop 0.35s cubic-bezier(.34,1.56,.64,1) ${delay}s both`,
+    }}>
+      <span>{b.icon}</span> {b.label}
+    </div>
+  );
+}
+
+// ─── NUTRITION PANEL ─────────────────────────────────────────────────────────
+function NutritionPanel({ nutrition:n, healthScore, badges, wellnessInsight, serves }) {
+  const [perServing, setPerServing] = useState(true);
+  const m = perServing ? 1 : (serves||2);
+
+  return (
+    <div style={{padding:"20px",borderTop:`1px solid ${T.sand}`}}>
+      {/* Toggle */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+        <div style={{fontFamily:"'Syne',sans-serif",fontSize:15,fontWeight:800,color:T.ink}}>Nutrition Facts</div>
+        <div style={{display:"flex",background:T.sandLight,borderRadius:12,padding:3,border:`1px solid ${T.border}`}}>
+          {["Per Serving","Total"].map((opt,i)=>(
+            <button key={opt} onClick={()=>setPerServing(i===0)}
+              style={{
+                padding:"5px 11px",borderRadius:9,border:"none",cursor:"pointer",
+                fontSize:11,fontWeight:700,fontFamily:"'Plus Jakarta Sans',sans-serif",
+                background:(i===0)===perServing ? T.cardBg : "transparent",
+                color:(i===0)===perServing ? T.ink : T.muted,
+                boxShadow:(i===0)===perServing ? `0 1px 6px ${T.shadow}` : "none",
+                transition:"all 0.2s",
+              }}
+            >{opt}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Macros */}
+      <div style={{display:"flex",gap:7,marginBottom:18}}>
+        <MacroCard label="Calories" value={Math.round(n.calories*m)} unit="kcal" color={T.coral} icon="🔥" delay={0}/>
+        <MacroCard label="Protein"  value={Math.round(n.protein*m)}  unit="g"    color={T.sage}  icon="💪" delay={0.05}/>
+        <MacroCard label="Carbs"    value={Math.round(n.carbs*m)}    unit="g"    color={T.amber} icon="⚡" delay={0.1}/>
+        <MacroCard label="Fat"      value={Math.round(n.fat*m)}      unit="g"    color={T.sky}   icon="🫙" delay={0.15}/>
+      </div>
+
+      {/* Health score + badges */}
+      <div style={{display:"flex",gap:14,alignItems:"flex-start",marginBottom:18}}>
+        <HealthScoreRing score={healthScore}/>
+        <div style={{flex:1}}>
+          <div style={{fontSize:10,fontWeight:700,color:T.mutedLight,letterSpacing:"0.08em",marginBottom:8,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>HEALTH BADGES</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+            {badges?.map((b,i)=><BadgeChip key={b} badge={b} delay={i*0.05}/>)}
+          </div>
+        </div>
+      </div>
+
+      {/* Micronutrients */}
+      <div style={{marginBottom:18}}>
+        <div style={{fontSize:10,fontWeight:700,color:T.mutedLight,letterSpacing:"0.08em",marginBottom:10,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>MICRONUTRIENTS · % DAILY VALUE</div>
+        {[
+          {label:"Iron",       value:Math.round(n.iron*m),      max:100, color:"#E07040"},
+          {label:"Calcium",    value:Math.round(n.calcium*m),   max:100, color:"#60A0E0"},
+          {label:"Potassium",  value:Math.round(n.potassium*m), max:100, color:"#A060D0"},
+          {label:"Magnesium",  value:Math.round(n.magnesium*m), max:100, color:"#40A880"},
+          {label:"Vitamin A",  value:Math.round(n.vitaminA*m),  max:100, color:"#FF9030"},
+          {label:"Vitamin C",  value:Math.round(n.vitaminC*m),  max:100, color:"#FF5C38"},
+          {label:"Vitamin D",  value:Math.round(n.vitaminD*m),  max:100, color:"#FFCC00"},
+        ].map((item,i)=>(
+          <NutritionBar key={item.label} {...item} unit="%" delay={i*0.06}/>
+        ))}
+      </div>
+
+      {/* Fiber / Sugar / Sodium */}
+      <div style={{display:"flex",gap:8,marginBottom:18}}>
+        {[
+          {label:"Fiber",  val:Math.round(n.fiber*m),  icon:"🌿", color:T.sage,  unit:"g"},
+          {label:"Sugar",  val:Math.round(n.sugar*m),  icon:"🍬", color:T.coral, unit:"g"},
+          {label:"Sodium", val:Math.round(n.sodium*m), icon:"🧂", color:T.sky,   unit:"mg"},
+        ].map(item=>(
+          <div key={item.label} style={{
+            flex:1, background:T.warmWhite, border:`1px solid ${T.border}`,
+            borderRadius:14, padding:"11px 8px", textAlign:"center",
+          }}>
+            <div style={{fontSize:15,marginBottom:3}}>{item.icon}</div>
+            <div style={{fontFamily:"'Syne',sans-serif",fontSize:17,fontWeight:800,color:item.color}}>{item.val}</div>
+            <div style={{fontSize:10,color:T.muted,fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:600}}>{item.unit}</div>
+            <div style={{fontSize:9,color:T.mutedLight,fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.04em"}}>{item.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* AI Wellness Insight */}
+      <div style={{
+        background:`linear-gradient(135deg,${T.sage}14,${T.amber}0A)`,
+        border:`1.5px solid ${T.sage}40`,
+        borderRadius:16,padding:"14px 16px",
+      }}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
+          <span style={{fontSize:18}}>🧠</span>
+          <span style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:800,color:T.sage}}>AI Wellness Insight</span>
+        </div>
+        <p style={{fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:13,color:T.inkLight,lineHeight:1.65,margin:0}}>{wellnessInsight}</p>
+      </div>
+      <p style={{fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:10,color:T.mutedLight,textAlign:"center",marginTop:10,fontStyle:"italic"}}>
+        * Nutrition values are AI-estimated and may vary.
+      </p>
+    </div>
+  );
+}
+
+// ─── RECIPE IMAGE ─────────────────────────────────────────────────────────────
+function RecipeImage({ title, mood, emoji, imageKeywords }) {
+  const [loaded, setLoaded] = useState(false);
+  const [errored, setErrored] = useState(false);
+  const moodObj = MOODS.find(m=>m.id===mood);
+  const kw = encodeURIComponent((imageKeywords||title.split(" ").slice(0,3).join(" "))+" food dish");
+  const src = `https://source.unsplash.com/featured/800x500/?${kw}`;
+
+  return (
+    <div style={{
+      position:"relative",height:220,overflow:"hidden",
+      background:moodObj ? `linear-gradient(135deg,${moodObj.bg},${moodObj.color}22)` : T.sand,
+      borderRadius:"22px 22px 0 0",
+    }}>
+      {!errored && (
+        <img src={src} alt={title}
+          onLoad={()=>setLoaded(true)}
+          onError={()=>setErrored(true)}
+          style={{
+            width:"100%",height:"100%",objectFit:"cover",
+            opacity:loaded?1:0,
+            transition:"opacity 0.6s ease",
+            borderRadius:"22px 22px 0 0",
+          }}
+        />
+      )}
+      {!loaded && !errored && (
+        <div style={{position:"absolute",inset:0,overflow:"hidden"}}>
+          <div style={{
+            position:"absolute",inset:0,width:"55%",
+            background:"linear-gradient(90deg,transparent,rgba(255,255,255,.45),transparent)",
+            animation:"shimmer 1.4s ease-in-out infinite",
+          }}/>
+        </div>
+      )}
+      {errored && (
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100%",flexDirection:"column",gap:10}}>
+          <span style={{fontSize:64,animation:"float 3s ease-in-out infinite"}}>{emoji}</span>
+          <span style={{fontSize:12,color:T.muted,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>tap to view steps</span>
+        </div>
+      )}
+      <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom,transparent 35%,rgba(0,0,0,0.52) 100%)",borderRadius:"22px 22px 0 0"}}/>
+      {/* Emoji badge */}
+      <div style={{
+        position:"absolute",top:12,right:12,
+        background:"rgba(255,255,255,0.94)",backdropFilter:"blur(12px)",
+        borderRadius:13,padding:"6px 10px",fontSize:22,
+        boxShadow:"0 4px 14px rgba(0,0,0,0.13)",
+      }}>{emoji}</div>
+      {/* Mood badge */}
+      {moodObj && (
+        <div style={{
+          position:"absolute",top:12,left:12,
+          background:moodObj.bg,border:`1.5px solid ${moodObj.color}40`,
+          borderRadius:100,padding:"5px 12px",
+          display:"flex",alignItems:"center",gap:5,
+        }}>
+          <span style={{fontSize:12}}>{moodObj.emoji}</span>
+          <span style={{fontSize:11,fontWeight:700,color:moodObj.color,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>{moodObj.label}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── RECIPE CARD ─────────────────────────────────────────────────────────────
+function RecipeCard({ recipe, index, onSave, saved }) {
+  const [open, setOpen] = useState(false);
+  const [showNutrition, setShowNutrition] = useState(false);
+  const [liked, setLiked] = useState(false);
+  const [reaction, setReaction] = useState(null);
+  const moodObj = MOODS.find(m=>m.id===recipe.mood);
+
+  const reactions = [
+    {r:"🤤",label:"I need this now."},
+    {r:"😤",label:"Challenge accepted."},
+    {r:"💀",label:"RIP my diet."},
+    {r:"🔥",label:"Absolutely legendary."},
+  ];
+
+  return (
+    <div style={{
+      background:T.cardBg, borderRadius:22,
+      overflow:"hidden", marginBottom:20,
+      boxShadow:`0 4px 28px ${T.shadowMd},0 1px 4px ${T.shadow}`,
+      border:`1px solid ${T.border}`,
+      animation:`cardSlideUp 0.5s cubic-bezier(.34,1.26,.64,1) ${index*0.12}s both`,
+    }}>
+      <RecipeImage title={recipe.title} mood={recipe.mood} emoji={recipe.emoji} imageKeywords={recipe.imageKeywords}/>
+
+      <div style={{padding:"16px 18px 18px"}}>
+        {/* Title + actions */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+          <div style={{flex:1,paddingRight:10}}>
+            <div style={{fontFamily:"'Syne',sans-serif",fontSize:20,fontWeight:800,color:T.ink,lineHeight:1.15,marginBottom:4}}>{recipe.title}</div>
+            <div style={{fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:13,color:T.muted,fontStyle:"italic",lineHeight:1.45}}>"{recipe.chefComment}"</div>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:7}}>
+            {[
+              {icon:liked?"❤️":"🤍",action:()=>setLiked(l=>!l),active:liked,ab:"#FEE2E2",ac:"#FECACA"},
+              {icon:saved?"🔖":"📌",action:()=>onSave(recipe),active:saved,ab:"#FEF3C7",ac:"#FDE68A"},
+            ].map((btn,i)=>(
+              <button key={i} onClick={btn.action}
+                style={{
+                  background:btn.active?btn.ab:T.warmWhite,
+                  border:`1.5px solid ${btn.active?btn.ac:T.border}`,
+                  borderRadius:13,width:40,height:40,cursor:"pointer",
+                  fontSize:18,display:"flex",alignItems:"center",justifyContent:"center",
+                  boxShadow:`0 2px 8px ${T.shadow}`,transition:"all 0.18s",
+                }}
+              >{btn.icon}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Meta chips */}
+        <div style={{display:"flex",gap:7,marginBottom:12,flexWrap:"wrap"}}>
+          {[{icon:"⏱",val:recipe.time},{icon:"📊",val:recipe.difficulty},{icon:"🍽",val:`${recipe.serves} serving${recipe.serves>1?"s":""}`}].map((b,i)=>(
+            <span key={i} style={{
+              background:moodObj?moodObj.bg:T.sandLight,
+              color:moodObj?moodObj.color:T.inkLight,
+              borderRadius:100,padding:"5px 12px",
+              fontSize:12,fontWeight:700,fontFamily:"'Plus Jakarta Sans',sans-serif",
+              border:`1px solid ${moodObj?moodObj.color+"30":T.border}`,
+            }}>{b.icon} {b.val}</span>
+          ))}
+          {recipe.healthScore && (
+            <span style={{
+              background:recipe.healthScore>=70?`${T.sage}18`:`${T.amber}18`,
+              color:recipe.healthScore>=70?T.sage:T.amber,
+              border:`1px solid ${recipe.healthScore>=70?T.sage:T.amber}40`,
+              borderRadius:100,padding:"5px 12px",
+              fontSize:12,fontWeight:700,fontFamily:"'Plus Jakarta Sans',sans-serif",
+            }}>❤️ {recipe.healthScore}/100</span>
+          )}
+        </div>
+
+        {/* Ingredients */}
+        <div style={{marginBottom:12}}>
+          <div style={{fontSize:10,fontWeight:800,letterSpacing:"0.1em",color:T.mutedLight,marginBottom:6,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>INGREDIENTS</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+            {recipe.ingredients?.map((ing,i)=>(
+              <span key={i} style={{
+                background:T.warmWhite,border:`1px solid ${T.border}`,
+                borderRadius:100,padding:"3px 10px",
+                fontSize:12,color:T.inkLight,fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:500,
+              }}>{ing}</span>
+            ))}
+          </div>
+        </div>
+
+        {/* Health badges */}
+        {recipe.badges?.length>0 && (
+          <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
+            {recipe.badges.map((b,i)=><BadgeChip key={b} badge={b} delay={i*0.04}/>)}
+          </div>
+        )}
+
+        {/* Action buttons */}
+        <div style={{display:"flex",gap:8,marginBottom:0}}>
+          <button onClick={()=>setOpen(o=>!o)}
+            style={{
+              flex:1,background:open?T.ink:T.warmWhite,
+              border:`1.5px solid ${open?T.ink:T.border}`,
+              borderRadius:14,padding:"11px",
+              color:open?"#fff":T.ink,
+              fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:700,fontSize:13,
+              cursor:"pointer",transition:"all 0.22s",
+            }}
+          >{open?"↑ Hide Steps":"👨‍🍳 View Steps"}</button>
+          <button onClick={()=>setShowNutrition(s=>!s)}
+            style={{
+              flex:1,background:showNutrition?T.sage:T.warmWhite,
+              border:`1.5px solid ${showNutrition?T.sage:T.border}`,
+              borderRadius:14,padding:"11px",
+              color:showNutrition?"#fff":T.ink,
+              fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:700,fontSize:13,
+              cursor:"pointer",transition:"all 0.22s",
+            }}
+          >{showNutrition?"↑ Hide Nutrition":"🥗 Nutrition"}</button>
+        </div>
+
+        {/* Steps */}
+        {open && (
+          <div style={{paddingTop:16,display:"flex",flexDirection:"column",gap:11,animation:"fadeInUp 0.28s ease both"}}>
+            {recipe.steps?.map((step,i)=>(
+              <div key={i} style={{display:"flex",gap:11,alignItems:"flex-start"}}>
+                <div style={{
+                  minWidth:30,height:30,borderRadius:"50%",
+                  background:`linear-gradient(135deg,${moodObj?.color||T.coral},${T.amber})`,
+                  color:"#fff",fontSize:13,fontWeight:800,
+                  display:"flex",alignItems:"center",justifyContent:"center",
+                  fontFamily:"'Plus Jakarta Sans',sans-serif",flexShrink:0,
+                  boxShadow:`0 3px 10px ${(moodObj?.color||T.coral)}50`,
+                }}>{i+1}</div>
+                <div style={{fontSize:13,color:T.inkLight,lineHeight:1.6,fontFamily:"'Plus Jakarta Sans',sans-serif",paddingTop:5}}>{step}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Reactions */}
+        <div style={{marginTop:16,paddingTop:14,borderTop:`1px solid ${T.sand}`}}>
+          <div style={{fontSize:11,fontWeight:700,color:T.mutedLight,textAlign:"center",marginBottom:10,fontFamily:"'Plus Jakarta Sans',sans-serif",letterSpacing:"0.06em"}}>WOULD YOU EAT THIS?</div>
+          <div style={{display:"flex",gap:8,justifyContent:"center"}}>
+            {reactions.map(({r,label})=>(
+              <button key={r} onClick={()=>setReaction(reaction===r?null:r)}
+                style={{
+                  background:reaction===r?T.warmWhite:"transparent",
+                  border:`2px solid ${reaction===r?T.border:"transparent"}`,
+                  borderRadius:13,padding:"7px 11px",cursor:"pointer",fontSize:23,
+                  boxShadow:reaction===r?`0 2px 10px ${T.shadow}`:"none",
+                  transition:"all 0.15s",
+                }}
+              >{r}</button>
+            ))}
+          </div>
+          {reaction && (
+            <div style={{textAlign:"center",marginTop:7,fontSize:13,color:T.muted,fontFamily:"'Plus Jakarta Sans',sans-serif",fontStyle:"italic",animation:"fadeIn 0.2s ease both"}}>
+              {reactions.find(x=>x.r===reaction)?.label}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Nutrition Panel */}
+      {showNutrition && recipe.nutrition && (
+        <div style={{animation:"fadeInUp 0.3s ease both"}}>
+          <NutritionPanel
+            nutrition={recipe.nutrition}
+            healthScore={recipe.healthScore}
+            badges={recipe.badges}
+            wellnessInsight={recipe.wellnessInsight}
+            serves={recipe.serves}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── LOADING STATE ────────────────────────────────────────────────────────────
+function LoadingState() {
+  const [i, setI] = useState(0);
+  useEffect(()=>{
+    const t = setInterval(()=>setI(x=>(x+1)%LOADING_MSGS.length), 1900);
+    return ()=>clearInterval(t);
+  },[]);
+  return (
+    <div style={{padding:"48px 20px",textAlign:"center",animation:"fadeIn 0.3s ease both"}}>
+      <div style={{fontSize:70,marginBottom:22,display:"inline-block",animation:"chefWiggle 1.8s ease-in-out infinite"}}>👨‍🍳</div>
+      <div style={{display:"flex",justifyContent:"center",gap:8,marginBottom:18}}>
+        {[0,1,2].map(d=>(
+          <div key={d} style={{
+            width:10,height:10,borderRadius:"50%",background:T.coral,
+            animation:`bounce 0.72s ease-in-out infinite`,
+            animationDelay:`${d*0.14}s`,
+          }}/>
+        ))}
+      </div>
+      <div key={i} style={{fontSize:14,color:T.muted,fontFamily:"'Plus Jakarta Sans',sans-serif",fontStyle:"italic",animation:"fadeInUp 0.3s ease both"}}>
+        {LOADING_MSGS[i]}
+      </div>
+      {/* Skeletons */}
+      <div style={{marginTop:32,display:"flex",flexDirection:"column",gap:16}}>
+        {[0,1].map(k=>(
+          <div key={k} style={{background:T.cardBg,borderRadius:22,overflow:"hidden",border:`1px solid ${T.border}`,opacity:0.55}}>
+            <div style={{height:180,background:T.sand,position:"relative",overflow:"hidden"}}>
+              <div style={{
+                position:"absolute",inset:0,width:"55%",
+                background:"linear-gradient(90deg,transparent,rgba(255,255,255,.65),transparent)",
+                animation:`shimmer 1.5s ease-in-out infinite`,
+                animationDelay:`${k*0.3}s`,
+              }}/>
+            </div>
+            <div style={{padding:18}}>
+              {[60,90,72].map((w,idx)=>(
+                <div key={idx} style={{height:idx===0?20:13,background:T.sand,borderRadius:8,width:`${w}%`,marginBottom:11}}/>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── SAVED PANEL ─────────────────────────────────────────────────────────────
+function SavedPanel({ saved, onClose, onRemove }) {
+  return (
+    <div style={{
+      position:"fixed",inset:0,background:T.cream,zIndex:200,
+      overflowY:"auto",padding:"24px 20px 40px",
+      paddingTop:"calc(24px + env(safe-area-inset-top,0px))",
+      animation:"slideInRight 0.3s cubic-bezier(.34,1.26,.64,1) both",
+    }}>
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:28}}>
+        <button onClick={onClose}
+          style={{
+            background:T.cardBg,border:`1.5px solid ${T.border}`,
+            borderRadius:13,width:42,height:42,cursor:"pointer",
+            fontSize:18,display:"flex",alignItems:"center",justifyContent:"center",
+            boxShadow:`0 2px 8px ${T.shadow}`,
+          }}>←</button>
+        <div style={{fontFamily:"'Syne',sans-serif",fontSize:22,fontWeight:800,color:T.ink}}>Saved Recipes</div>
+      </div>
+      {saved.length===0 ? (
+        <div style={{textAlign:"center",paddingTop:60}}>
+          <div style={{fontSize:64,marginBottom:16}}>📌</div>
+          <div style={{fontFamily:"'Syne',sans-serif",fontSize:18,fontWeight:800,color:T.ink,marginBottom:8}}>Nothing saved yet</div>
+          <div style={{fontSize:13,color:T.muted,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>Pin recipes to find them here.</div>
+        </div>
+      ) : (
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          {saved.map((r,i)=>(
+            <div key={r.title+i} style={{
+              background:T.cardBg,border:`1px solid ${T.border}`,
+              borderRadius:18,padding:"14px 16px",
+              display:"flex",alignItems:"center",gap:14,
+              boxShadow:`0 2px 12px ${T.shadow}`,
+              animation:`fadeInUp 0.3s ease ${i*0.06}s both`,
+            }}>
+              <span style={{fontSize:30}}>{r.emoji}</span>
+              <div style={{flex:1}}>
+                <div style={{fontFamily:"'Syne',sans-serif",fontSize:15,fontWeight:800,color:T.ink}}>{r.title}</div>
+                <div style={{fontSize:11,color:T.muted,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>{r.time} · {r.difficulty}</div>
+              </div>
+              <button onClick={()=>onRemove(r.title)}
+                style={{background:"#FEE2E2",border:"none",borderRadius:10,width:32,height:32,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                🗑️
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── STREAK BANNER ───────────────────────────────────────────────────────────
+function StreakBanner({ streak, xp }) {
+  return (
+    <div style={{
+      background:`linear-gradient(135deg,${T.amber}22,${T.coral}14)`,
+      border:`1.5px solid ${T.amber}40`,borderRadius:18,padding:"12px 18px",
+      display:"flex",alignItems:"center",justifyContent:"space-between",
+      marginBottom:16,animation:"fadeInUp 0.4s ease 0.1s both",
+    }}>
+      <div style={{display:"flex",alignItems:"center",gap:10}}>
+        <span style={{fontSize:26,animation:"float 2s ease-in-out infinite"}}>🔥</span>
+        <div>
+          <div style={{fontFamily:"'Syne',sans-serif",fontSize:15,fontWeight:800,color:T.ink}}>{streak} Day Streak</div>
+          <div style={{fontSize:11,color:T.muted,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>Keep cooking every day!</div>
+        </div>
+      </div>
+      <div style={{textAlign:"right"}}>
+        <div style={{fontFamily:"'Syne',sans-serif",fontSize:17,fontWeight:800,color:T.amber}}>{xp} XP</div>
+        <div style={{fontSize:10,color:T.muted,fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:600}}>Total Points</div>
+      </div>
+    </div>
+  );
+}
+
+// ─── MAIN APP ─────────────────────────────────────────────────────────────────
+function App() {
+  const [ingredients, setIngredients] = useState(()=>load("fi_ingredients",[]));
+  const [inputVal, setInputVal] = useState("");
+  const [selectedMood, setSelectedMood] = useState("comfort");
+  const [filters, setFilters] = useState([]);
+  const [recipes, setRecipes] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [chefQuip, setChefQuip] = useState("");
+  const [savedRecipes, setSavedRecipes] = useState(()=>load("fi_saved",[]));
+  const [showSaved, setShowSaved] = useState(false);
+  const [streak] = useState(3);
+  const [xp, setXP] = useState(()=>load("fi_xp",0));
+  const [hasGenerated, setHasGenerated] = useState(false);
+  const [isOnline, setIsOnline] = useState(()=>navigator.onLine);
+
+  useEffect(()=>{ save("fi_ingredients",ingredients); },[ingredients]);
+  useEffect(()=>{ save("fi_saved",savedRecipes); },[savedRecipes]);
+  useEffect(()=>{ save("fi_xp",xp); },[xp]);
+
+  useEffect(()=>{
+    const on=()=>setIsOnline(true), off=()=>setIsOnline(false);
+    window.addEventListener("online",on); window.addEventListener("offline",off);
+    return()=>{ window.removeEventListener("online",on); window.removeEventListener("offline",off); };
+  },[]);
+
+  const addIngredient = (name, emoji) => {
+    const clean = name.trim().toLowerCase();
+    if (!clean || ingredients.find(i=>i.name===clean)) return;
+    setIngredients(prev=>[...prev,{name:clean,emoji:emoji||"🥄"}]);
+    setInputVal("");
+  };
+
+  const handleGenerate = async () => {
+    if (ingredients.length===0) { setError("Add at least one ingredient first!"); setTimeout(()=>setError(""),3000); return; }
+    if (!isOnline) { setError("You're offline — connect to generate recipes."); setTimeout(()=>setError(""),3000); return; }
+    setLoading(true); setError(""); setRecipes([]);
+    try {
+      const result = await generateRecipes(ingredients.map(i=>i.name), selectedMood, filters);
+      setRecipes(result.recipes||[]); setChefQuip(result.chefQuip||"");
+      setHasGenerated(true); setXP(x=>x+50);
+    } catch(e) {
+      setError("Something went wrong — check your API key and try again.");
+    } finally { setLoading(false); }
+  };
+
+  const moodObj = MOODS.find(m=>m.id===selectedMood)||MOODS[0];
+
+  return (
+    <div style={{minHeight:"100vh",background:T.cream,fontFamily:"'Plus Jakarta Sans',sans-serif",maxWidth:480,margin:"0 auto",position:"relative"}}>
+
+      {/* Offline bar */}
+      {!isOnline && (
+        <div style={{
+          position:"fixed",top:0,left:0,right:0,zIndex:9000,
+          background:"#1C1409",color:"#FFF3DC",
+          fontSize:12,fontWeight:700,fontFamily:"'Plus Jakarta Sans',sans-serif",
+          padding:"10px 20px",
+          paddingTop:"calc(10px + env(safe-area-inset-top,0px))",
+          display:"flex",alignItems:"center",justifyContent:"center",gap:8,
+        }}>
+          🔌 You're offline — saved recipes still available
+        </div>
+      )}
+
+      {/* Saved panel */}
+      {showSaved && (
+        <SavedPanel
+          saved={savedRecipes}
+          onClose={()=>setShowSaved(false)}
+          onRemove={(title)=>setSavedRecipes(prev=>prev.filter(r=>r.title!==title))}
+        />
+      )}
+
+      {/* Top nav */}
+      <div style={{
+        position:"sticky",top:0,zIndex:100,
+        background:"rgba(255,252,247,0.92)",backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)",
+        borderBottom:`1px solid ${T.border}`,padding:"14px 20px",
+        paddingTop:"calc(14px + env(safe-area-inset-top,0px))",
+        display:"flex",alignItems:"center",justifyContent:"space-between",
+      }}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <svg width="34" height="34" viewBox="0 0 200 200" fill="none">
+            <defs>
+              <linearGradient id="ng" x1="0" y1="0" x2="200" y2="200" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stopColor="#FF6A3D"/><stop offset="100%" stopColor="#FFC13D"/>
+              </linearGradient>
+            </defs>
+            <rect width="200" height="200" rx="48" fill="url(#ng)"/>
+            <path d="M100 162C91 162 87 156 87 148L87 112C87 109 85 107 83 104C78 96 75 87 75 77C75 55 86.2 38 100 38C113.8 38 125 55 125 77C125 87 122 96 117 104C115 107 113 109 113 112L113 148C113 156 109 162 100 162Z" fill="white" opacity="0.96"/>
+            <path d="M100 90C100 90 88 80 88 71C88 63.3 93.4 57 100 57C106.6 57 112 63.3 112 71C112 80 100 90 100 90Z" fill="white" opacity="0.75"/>
+          </svg>
+          <span style={{fontFamily:"'Syne',sans-serif",fontSize:20,fontWeight:800,color:T.ink,letterSpacing:"-.03em"}}>
+            Fridge<span style={{color:T.coral}}>AI</span>
+          </span>
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={()=>setShowSaved(true)}
+            style={{
+              background:T.warmWhite,border:`1.5px solid ${T.border}`,borderRadius:13,
+              padding:"8px 14px",cursor:"pointer",fontSize:13,fontWeight:700,color:T.ink,
+              display:"flex",alignItems:"center",gap:6,boxShadow:`0 2px 8px ${T.shadow}`,
+            }}>
+            📌{savedRecipes.length>0&&<span style={{background:T.coral,color:"#fff",borderRadius:100,padding:"1px 7px",fontSize:11}}>{savedRecipes.length}</span>}
+          </button>
+          <div style={{
+            background:`linear-gradient(135deg,${T.amber}22,${T.coral}14)`,
+            border:`1.5px solid ${T.amber}40`,borderRadius:13,padding:"8px 12px",
+            display:"flex",alignItems:"center",gap:5,
+          }}>
+            <span style={{fontSize:14}}>🔥</span>
+            <span style={{fontFamily:"'Syne',sans-serif",fontSize:14,fontWeight:800,color:T.amber}}>{streak}</span>
+          </div>
+        </div>
+      </div>
+
+      <div style={{padding:"20px 20px calc(80px + env(safe-area-inset-bottom,0px))"}}>
+        <StreakBanner streak={streak} xp={xp}/>
+
+        {/* Hero */}
+        <div style={{marginBottom:22,textAlign:"center",animation:"fadeInUp 0.4s ease both"}}>
+          <div style={{fontFamily:"'Syne',sans-serif",fontSize:28,fontWeight:800,color:T.ink,letterSpacing:"-.04em",lineHeight:1.1,marginBottom:6}}>
+            What's in your<br/><span style={{color:T.coral}}>fridge</span> today?
+          </div>
+          <div style={{fontSize:13,color:T.muted,fontWeight:500}}>Add ingredients · pick a mood · get recipes</div>
+        </div>
+
+        {/* Input */}
+        <div style={{
+          display:"flex",gap:10,background:T.cardBg,
+          border:`2px solid ${T.border}`,borderRadius:18,
+          padding:"10px 10px 10px 18px",
+          boxShadow:`0 4px 20px ${T.shadow}`,marginBottom:14,
+          animation:"fadeInUp 0.4s ease 0.1s both",
+        }}>
+          <input
+            value={inputVal}
+            onChange={e=>setInputVal(e.target.value)}
+            onKeyDown={e=>e.key==="Enter"&&addIngredient(inputVal,"🥄")}
+            placeholder="Type an ingredient..."
+            style={{flex:1,border:"none",outline:"none",background:"transparent",fontSize:15,color:T.ink,fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:500}}
+          />
+          <button onClick={()=>addIngredient(inputVal,"🥄")}
+            style={{
+              background:`linear-gradient(135deg,${T.coral},${T.amber})`,border:"none",borderRadius:13,
+              padding:"10px 16px",color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer",
+              fontFamily:"'Plus Jakarta Sans',sans-serif",boxShadow:`0 3px 12px ${T.coral}50`,
+              whiteSpace:"nowrap",
+            }}>+ Add</button>
+        </div>
+
+        {/* Quick add */}
+        <div style={{marginBottom:14,animation:"fadeInUp 0.4s ease 0.15s both"}}>
+          <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.1em",color:T.mutedLight,marginBottom:7,textTransform:"uppercase"}}>Quick Add</div>
+          <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+            {QUICK_INGREDIENTS.filter(q=>!ingredients.find(i=>i.name===q.name)).slice(0,10).map(q=>(
+              <button key={q.name} onClick={()=>addIngredient(q.name,q.emoji)}
+                style={{
+                  background:T.warmWhite,border:`1.5px solid ${T.border}`,borderRadius:100,
+                  padding:"6px 11px",fontSize:12,fontWeight:600,color:T.inkLight,
+                  cursor:"pointer",fontFamily:"'Plus Jakarta Sans',sans-serif",
+                  display:"inline-flex",alignItems:"center",gap:5,transition:"all 0.18s",
+                }}
+              ><span>{q.emoji}</span>{q.name}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Selected ingredients */}
+        {ingredients.length>0 && (
+          <div style={{marginBottom:14,animation:"fadeInUp 0.3s ease both"}}>
+            <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.1em",color:T.mutedLight,marginBottom:7,textTransform:"uppercase",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span>Your fridge ({ingredients.length})</span>
+              <button onClick={()=>setIngredients([])}
+                style={{background:"none",border:"none",color:T.coral,cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
+                Clear all
+              </button>
+            </div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
+              {ingredients.map(ing=>(
+                <button key={ing.name} onClick={()=>setIngredients(prev=>prev.filter(i=>i.name!==ing.name))}
+                  style={{
+                    display:"inline-flex",alignItems:"center",gap:6,
+                    background:T.warmWhite,border:`1.5px solid ${T.border}`,
+                    borderRadius:100,padding:"7px 13px 7px 9px",
+                    fontSize:13,fontWeight:600,color:T.inkLight,cursor:"pointer",
+                    fontFamily:"'Plus Jakarta Sans',sans-serif",
+                    boxShadow:`0 2px 8px ${T.shadow}`,
+                    animation:"chipPop 0.3s cubic-bezier(.34,1.56,.64,1) both",
+                  }}>
+                  <span style={{fontSize:15}}>{ing.emoji}</span>{ing.name}
+                  <span style={{color:T.mutedLight,fontSize:11,fontWeight:700,marginLeft:2}}>✕</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Mood selector */}
+        <div style={{marginBottom:14,animation:"fadeInUp 0.4s ease 0.2s both"}}>
+          <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.1em",color:T.mutedLight,marginBottom:9,textTransform:"uppercase"}}>Cooking Mood</div>
+          <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:4}}>
+            {MOODS.map(mood=>(
+              <button key={mood.id} onClick={()=>setSelectedMood(mood.id)}
+                style={{
+                  display:"flex",flexDirection:"column",alignItems:"center",gap:3,
+                  minWidth:70,flexShrink:0,
+                  background:selectedMood===mood.id?mood.bg:T.warmWhite,
+                  border:`${selectedMood===mood.id?2:1.5}px solid ${selectedMood===mood.id?mood.color:T.border}`,
+                  borderRadius:17,padding:"11px 7px 9px",cursor:"pointer",
+                  boxShadow:selectedMood===mood.id?`0 4px 18px ${mood.color}40`:`0 2px 8px ${T.shadow}`,
+                  transition:"all 0.18s",
+                }}>
+                <span style={{fontSize:22}}>{mood.emoji}</span>
+                <span style={{fontSize:11,fontWeight:700,color:selectedMood===mood.id?mood.color:T.ink}}>{mood.label}</span>
+                {selectedMood===mood.id&&<span style={{fontSize:9,color:mood.color,textAlign:"center",lineHeight:1.2,fontWeight:600}}>{mood.desc}</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div style={{marginBottom:20,animation:"fadeInUp 0.4s ease 0.25s both"}}>
+          <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.1em",color:T.mutedLight,marginBottom:7,textTransform:"uppercase"}}>Filters</div>
+          <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+            {FILTERS.map(f=>(
+              <button key={f.id} onClick={()=>setFilters(prev=>prev.includes(f.id)?prev.filter(x=>x!==f.id):[...prev,f.id])}
+                style={{
+                  background:filters.includes(f.id)?T.ink:T.warmWhite,
+                  border:`1.5px solid ${filters.includes(f.id)?T.ink:T.border}`,
+                  borderRadius:100,padding:"7px 13px",
+                  fontSize:12,fontWeight:700,
+                  color:filters.includes(f.id)?"#fff":T.inkLight,
+                  cursor:"pointer",fontFamily:"'Plus Jakarta Sans',sans-serif",transition:"all 0.18s",
+                }}>{f.label}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div style={{
+            background:"#FEF2F2",border:"1.5px solid #FECACA",borderRadius:14,
+            padding:"12px 16px",marginBottom:14,fontSize:13,color:"#DC2626",
+            fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:600,
+            animation:"fadeInUp 0.2s ease both",
+          }}>⚠️ {error}</div>
+        )}
+
+        {/* Generate button */}
+        <button onClick={handleGenerate} disabled={loading}
+          style={{
+            width:"100%",
+            background:loading?T.sand:`linear-gradient(135deg,${moodObj.color||T.coral},${T.amber})`,
+            border:"none",borderRadius:20,padding:"18px",
+            color:loading?T.muted:"#fff",
+            fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:17,letterSpacing:"-.01em",
+            cursor:loading?"not-allowed":"pointer",
+            boxShadow:loading?"none":`0 6px 28px ${(moodObj.color||T.coral)}55`,
+            transition:"all 0.25s",marginBottom:26,
+            animation:"fadeInUp 0.4s ease 0.3s both",
+          }}>
+          {loading ? "🍳 Cooking up ideas..." : `${moodObj.emoji} Generate ${moodObj.label} Recipes`}
+        </button>
+
+        {/* Loading */}
+        {loading && <LoadingState/>}
+
+        {/* Chef quip */}
+        {chefQuip && !loading && (
+          <div style={{
+            background:`linear-gradient(135deg,${moodObj.bg},${moodObj.color}18)`,
+            border:`1.5px solid ${moodObj.color}35`,
+            borderRadius:18,padding:"14px 16px",
+            display:"flex",alignItems:"center",gap:12,marginBottom:18,
+            animation:"fadeInUp 0.3s ease both",
+          }}>
+            <span style={{fontSize:26,flexShrink:0}}>👨‍🍳</span>
+            <div>
+              <div style={{fontSize:10,fontWeight:700,color:moodObj.color,letterSpacing:"0.08em",marginBottom:2,textTransform:"uppercase"}}>Chef FridgeAI</div>
+              <div style={{fontSize:13,color:T.inkLight,fontFamily:"'Plus Jakarta Sans',sans-serif",fontStyle:"italic",lineHeight:1.5}}>"{chefQuip}"</div>
+            </div>
+          </div>
+        )}
+
+        {/* Recipes */}
+        {!loading && recipes.length>0 && (
+          <div style={{animation:"fadeIn 0.3s ease both"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+              <div style={{fontFamily:"'Syne',sans-serif",fontSize:18,fontWeight:800,color:T.ink}}>{recipes.length} Recipes Generated</div>
+              <div style={{background:`${T.amber}20`,border:`1px solid ${T.amber}40`,borderRadius:100,padding:"4px 12px",fontSize:11,fontWeight:700,color:T.amber,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>+50 XP 🏆</div>
+            </div>
+            {recipes.map((recipe,i)=>(
+              <RecipeCard
+                key={recipe.title+i} recipe={recipe} index={i}
+                onSave={(r)=>setSavedRecipes(prev=>prev.find(s=>s.title===r.title)?prev.filter(s=>s.title!==r.title):[...prev,r])}
+                saved={!!savedRecipes.find(r=>r.title===recipe.title)}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!loading && recipes.length===0 && !hasGenerated && (
+          <div style={{textAlign:"center",paddingTop:16,animation:"fadeIn 0.5s ease both"}}>
+            <div style={{fontSize:78,marginBottom:14,animation:"float 3s ease-in-out infinite"}}>🧊</div>
+            <div style={{fontFamily:"'Syne',sans-serif",fontSize:20,fontWeight:800,color:T.ink,marginBottom:8}}>Your fridge awaits</div>
+            <div style={{fontSize:13,color:T.muted,lineHeight:1.6,maxWidth:280,margin:"0 auto"}}>Add ingredients, pick your mood, and let AI create something delicious.</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+
+// Hide splash once React mounts
+setTimeout(()=>{ const s=document.getElementById("splash"); if(s) s.classList.add("gone"); setTimeout(()=>{if(s)s.style.display="none";},600); }, 1400);
+</script>
+
+<script>
+// Service Worker
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('/sw.js',{scope:'/'})
+      .then(r=>console.log('[FridgeAI] SW registered'))
+      .catch(e=>console.warn('[FridgeAI] SW failed',e));
+  });
+}
+
+// Install prompt
+let deferredPrompt=null;
+const banner=document.getElementById('install-banner');
+const dismissed=localStorage.getItem('fridgeai_dismissed');
+const showBanner=!dismissed||(Date.now()-parseInt(dismissed)>7*24*60*60*1000);
+
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault(); deferredPrompt=e;
+  if(showBanner) setTimeout(()=>banner.classList.add('show'),9000);
+});
+document.getElementById('btn-install')?.addEventListener('click',async()=>{
+  if(!deferredPrompt) return;
+  banner.classList.remove('show');
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt=null;
+});
+document.getElementById('btn-dismiss')?.addEventListener('click',()=>{
+  banner.classList.remove('show');
+  localStorage.setItem('fridgeai_dismissed',Date.now().toString());
+});
+window.addEventListener('appinstalled',()=>{ banner.classList.remove('show'); deferredPrompt=null; });
+</script>
+</body>
+</html>
